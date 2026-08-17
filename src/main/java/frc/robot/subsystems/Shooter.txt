@@ -1,0 +1,162 @@
+package frc.robot.subsystems;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Optional;
+
+import javax.annotation.processing.SupportedOptions;
+
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.mechanisms.swerve.LegacySwerveRequest.FieldCentricFacingAngle;
+
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.Constants;
+import frc.robot.LimelightHelpers;
+import frc.robot.Constants.AprilTagLimelight1Constants;
+import frc.robot.Constants.ShooterConstants;
+import frc.robot.LimelightHelpers.LimelightResults;
+import frc.robot.LimelightHelpers.RawFiducial;
+
+public class Shooter extends SubsystemBase {
+    private class ID{
+        private static Object bCenter = 26;
+        private static Object bSide = 25;
+        private static Object rCenter = 18;
+        private static Object rSide = 27;
+        private static Object lCenter = 21;
+        private static Object lSide = 24;
+
+        private static Collection<Object> bBoth = new HashSet<Object>();
+        private static Collection<Object> rBoth = new HashSet<Object>();
+        private static Collection<Object> lBoth = new HashSet<Object>();
+    }
+
+    public TalonFX shooterMotor;
+    public TalonFX angleMotor;
+    public TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
+    public TalonFXConfiguration angleConfig = new TalonFXConfiguration();
+    public Slot0Configs shooterConfigSlot0 = shooterConfig.Slot0;
+    public Slot0Configs angleConfigSlot0 = angleConfig.Slot0;
+    public MotionMagicConfigs shooterMagicConfig = shooterConfig.MotionMagic;
+    public MotionMagicConfigs angleMagicConfig = angleConfig.MotionMagic;
+
+    private InterpolatingDoubleTreeMap rpmTable = new InterpolatingDoubleTreeMap();
+    private InterpolatingDoubleTreeMap angleTable = new InterpolatingDoubleTreeMap();
+
+    private ArrayList<Integer> tagNumbers = new ArrayList<Integer>();
+    private double tagHeight = 1.123950;
+    private double hubHeight = 1.829;
+
+    private double xOffset = 0.0;
+    private double xAngle;
+
+    private String name = Constants.AprilTagLimelight1Constants.limelightName;
+    
+
+    public Shooter(){
+        shooterMotor = new TalonFX(ShooterConstants.ShooterMotorID);
+        angleMotor = new TalonFX(ShooterConstants.AngleMotorID);
+
+        //PID Gains
+        shooterConfigSlot0.kS = ShooterConstants.kSShooter;
+        shooterConfigSlot0.kV = ShooterConstants.kVShooter;
+        shooterConfigSlot0.kA = ShooterConstants.kAShooter;
+        shooterConfigSlot0.kP = ShooterConstants.kPShooter;
+        shooterConfigSlot0.kI = ShooterConstants.kIShooter;
+        shooterConfigSlot0.kD = ShooterConstants.kDShooter;
+
+        angleConfigSlot0.kS = ShooterConstants.kSAngle;
+        angleConfigSlot0.kV = ShooterConstants.kVAngle;
+        angleConfigSlot0.kA = ShooterConstants.kAAngle;
+        angleConfigSlot0.kG = ShooterConstants.kGAngle;
+        angleConfigSlot0.kP = ShooterConstants.kPAngle;
+        angleConfigSlot0.kI = ShooterConstants.kIAngle;
+        angleConfigSlot0.kD = ShooterConstants.kDAngle;
+
+        //Motion Magic
+
+        shooterMagicConfig.MotionMagicAcceleration = ShooterConstants.mmAccelerationShooter;
+        shooterMagicConfig.MotionMagicJerk = ShooterConstants.mmJerkShooter;
+
+        angleMagicConfig.MotionMagicCruiseVelocity = ShooterConstants.mmCruiseVelocityAngle;
+        angleMagicConfig.MotionMagicExpo_kA = ShooterConstants.mmkAAngle;
+        angleMagicConfig.MotionMagicExpo_kV = ShooterConstants.mmkVAngle;
+
+        //Stator Current Limits
+
+        shooterConfig.CurrentLimits.StatorCurrentLimit = ShooterConstants.shooterStatorCurrentLimit; //TODO
+        shooterConfig.CurrentLimits.StatorCurrentLimitEnable = true; 
+
+        angleConfig.CurrentLimits.StatorCurrentLimit = ShooterConstants.angleStatorCurrentLimit; //TODO
+        angleConfig.CurrentLimits.StatorCurrentLimitEnable = true;
+
+        //Adding values to the graphs
+        rpmTable.put(0.0,0.0);
+        rpmTable.put(50.0,300.0);
+        rpmTable.put(100.0,600.0);
+        rpmTable.put(150.0,900.0);
+        rpmTable.put(200.0,1200.0);
+
+        angleTable.put(50.0, 45.0);
+        angleTable.put(45.0, 50.0);
+        angleTable.put(46.0, 35.0);
+        angleTable.put(35.0, 30.0);
+        angleTable.put(20.0, 25.0);
+
+        //Setting up Apriltag ID Combinations
+        ID.bBoth.add(ID.bCenter);
+        ID.bBoth.add(ID.bSide);
+        ID.rBoth.add(ID.rCenter);
+        ID.rBoth.add(ID.rSide);
+        ID.lBoth.add(ID.lCenter);
+        ID.lBoth.add(ID.lSide);
+    }
+
+    public void AlignLimelight(){
+        double ID = LimelightHelpers.getFiducialID("");
+        double XOffset = 0;
+        if (ID == 21
+         || ID == 26
+         || ID == 20
+         || ID == 18){
+            XOffset = 0;
+        } else 
+        if (ID == 25
+         || ID == 27
+         || ID == 19
+         || ID == 24){
+            XOffset = 0.35;
+            if (ID == 24){
+                XOffset *= -1;
+            }
+         }
+         LimelightHelpers.setFiducial3DOffset("", -0.5965, xOffset, -0.66);
+    }
+
+    public double calculateDistance(){
+        xAngle = LimelightHelpers.getTX("");
+        double yAngle = LimelightHelpers.getTY("");
+
+        if (tagNumbers.size() < 0){
+            return(0.0);
+        }
+
+        double tyDistance = (hubHeight - Constants.AprilTagLimelight1Constants.limelightHeight) / Math.tan(Units.degreesToRadians(Constants.AprilTagLimelight1Constants.limelightAngle + yAngle));
+        double groundDistance = tyDistance / Math.cos(Units.degreesToRadians(xAngle));
+        return(groundDistance);
+    }
+}

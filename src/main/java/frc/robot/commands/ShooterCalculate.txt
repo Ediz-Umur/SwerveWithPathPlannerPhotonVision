@@ -1,0 +1,84 @@
+package frc.robot.commands;
+
+import com.ctre.phoenix6.controls.MotionMagicExpoTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.MotionMagicVelocityTorqueCurrentFOC;
+import com.pathplanner.lib.config.RobotConfig;
+
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.Constants;
+import frc.robot.RobotContainer;
+import frc.robot.subsystems.Shooter;
+
+public class ShooterCalculate extends Command{
+
+    private Shooter shooter = RobotContainer.shooter;
+
+    private double rpm = 0.0;
+    private double angle = 0.0;
+    private double SendAngle = 0.0;
+
+    private Translation2d TargetTranslation;
+
+    public ShooterCalculate(){
+        addRequirements(shooter);
+    }
+
+        public double DistanceToRPM(double distance, double a){
+        double H = 1.89;
+   
+        double Velocity = Math.sqrt((-9.8*Math.pow(distance, 2)*(1 + Math.pow(Math.tan(Math.toRadians(a)), 2))) / ((2 * H) - 2 * distance * Math.tan(Math.toRadians(a))));
+        return(Units.radiansPerSecondToRotationsPerMinute(Velocity / 0.0508));
+    }
+
+    public double DistanceToAngle(double distance){
+        double S = Math.toRadians(-30);
+        double H = 1.89;
+
+        double Angle = Math.toDegrees(Math.atan((Math.tan(S) * distance - (2 * H)) / -distance));
+        return(Angle);
+    }
+
+    public double CalculateDistance(){
+        //Get the Hub Translation
+        TargetTranslation = new Translation2d(4.625594, 4.034536);
+
+        //Get the robots translation
+        Translation2d ShooterTranslation = Constants.drivetrain.getState().Pose.getTranslation();
+
+        //Return the distance between the translations
+        return(ShooterTranslation.getDistance(TargetTranslation));
+    }
+
+    @Override
+    public void initialize(){
+        double distance = CalculateDistance();
+        SmartDashboard.putNumber("Distance", distance);
+        System.out.println("Start");
+
+        angle = DistanceToAngle(distance);
+        SendAngle = 90 - angle;
+        rpm = DistanceToRPM(distance, angle);
+
+        System.out.println(distance);
+        System.out.println(angle);
+        System.out.println(rpm);
+    }
+
+    @Override
+    public boolean isFinished(){
+        if (rpm != 0.0 && angle != 0.0){
+            return(true);
+        } else {
+            return(false);
+        }
+    }
+
+    @Override
+    public void end(boolean interrupted){
+        rpm = 0.0;
+        angle = 0.0;
+    }
+}
