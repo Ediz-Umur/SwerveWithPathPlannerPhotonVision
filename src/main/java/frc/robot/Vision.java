@@ -21,14 +21,18 @@ public class Vision{
 
     private static AprilTagFieldLayout FieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltAndymark);
 
-    private static PhotonCamera cmrKarga = new PhotonCamera(Constants.VisionCameraKargaConstants.Name);
-    private static PhotonCamera cmrTavuk = new PhotonCamera(Constants.VisionCameraTavukConstants.Name);
+    private static PhotonCamera cmrMavi = new PhotonCamera(Constants.VisionCameraKargaConstants.Name);
+    private static PhotonCamera cmrYesil = new PhotonCamera(Constants.VisionCameraTavukConstants.Name);
+    private static PhotonCamera cmrSiyah = new PhotonCamera(Constants.VisionCameraTavukConstants.Name);
 
-    private static PhotonPoseEstimator estKarga = new PhotonPoseEstimator(FieldLayout, Constants.VisionCameraKargaConstants.RobotToCamera);
-    private static PhotonPoseEstimator estTavuk = new PhotonPoseEstimator(FieldLayout, Constants.VisionCameraTavukConstants.RobotToCamera);
+
+    private static PhotonPoseEstimator estMavi = new PhotonPoseEstimator(FieldLayout, Constants.VisionCameraKargaConstants.RobotToCamera);
+    private static PhotonPoseEstimator estYesil = new PhotonPoseEstimator(FieldLayout, Constants.VisionCameraTavukConstants.RobotToCamera);
+    private static PhotonPoseEstimator estSiyah = new PhotonPoseEstimator(FieldLayout, Constants.VisionCameraSiyahConstants.RobotToCamera);
+
             
-    static PhotonCamera[] cameras = {cmrKarga, cmrTavuk};
-    static PhotonPoseEstimator[] poseEstimators = {estKarga, estTavuk};
+    static PhotonCamera[] cameras = {cmrMavi, cmrYesil, cmrSiyah};
+    static PhotonPoseEstimator[] poseEstimators = {estMavi, estYesil, estSiyah};
             
     private static Matrix<N3, N1> CurrentSTDDevs;
                     
@@ -46,15 +50,15 @@ public class Vision{
             if (visEst.isEmpty()){
                 visEst = poseEstimator.estimateLowestAmbiguityPose(result);
             }
-    
-            getVisionSTDDevs(visEst, result.getTargets(), poseEstimator);
+
+            setVisionSTDDevs(visEst, result.getTargets(), poseEstimator);
             visEst.ifPresent(est -> {
             Constants.drivetrain.addVisionMeasurement(est.estimatedPose.toPose2d(), result.getTimestampSeconds(), getCurrentStdDevs());
         });
     }
 }
                                                 
-    private static void getVisionSTDDevs(Optional<EstimatedRobotPose> estimatedPose, List<PhotonTrackedTarget> targets, PhotonPoseEstimator poseEstimator){
+    private static void setVisionSTDDevs(Optional<EstimatedRobotPose> estimatedPose, List<PhotonTrackedTarget> targets, PhotonPoseEstimator poseEstimator){
         boolean deletePose = false;
         if (estimatedPose.isEmpty()){
             CurrentSTDDevs = Constants.VisionStdConstants.stdSingleTag;

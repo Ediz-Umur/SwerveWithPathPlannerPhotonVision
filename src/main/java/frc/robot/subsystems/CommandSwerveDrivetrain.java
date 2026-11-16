@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.Utils;
+import com.ctre.phoenix6.hardware.Pigeon2;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -32,8 +33,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
-import frc.robot.LimelightHelpers.PoseEstimate;
-import frc.robot.LimelightHelpers.RawFiducial;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 /**
@@ -44,6 +43,7 @@ import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
  * https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/tuner-swerve/index.html
  */
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
+    public Pigeon2 gyro = new Pigeon2(52);
     private static final double kSimLoopPeriod = 0.004; // 4 ms
     private Notifier m_simNotifier = null;
     private double m_lastSimTime;
@@ -62,49 +62,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
-
-
-    public boolean RejectMeasurement(PoseEstimate estimate){
-        //If the robot is turning too fast, reject measurement
-        if (Units.radiansToRotations(Constants.drivetrain.getState().Speeds.omegaRadiansPerSecond) > 0.5){
-            return true;
-        }
-
-        for (RawFiducial tag : estimate.rawFiducials){
-            //Checks each tag for the minimum ambiguity needed
-            if (tag.ambiguity >= Constants.MinAmbiguity){
-                return true;
-            }
-        }
-
-        //If there are more than 2 tags visible, accept measurement
-        if (estimate.tagCount > 1){
-            return false;
-        }
-
-        return true;
-    }
     
-    public Matrix <N3, N1> CalculateSTDDevs(PoseEstimate estimate){
-
-        double MultiTagBonus = 1;
-
-        if (estimate.tagCount >= 3){
-            MultiTagBonus = 0.5;
-        } else if (estimate.tagCount == 2){
-            MultiTagBonus = 0.7;
-        } else {
-            MultiTagBonus = 1;
-        }
-
-        double XYStd = (Constants.sDrivetrain.XYBase + estimate.avgTagDist * Constants.sDrivetrain.XYScale) * MultiTagBonus;
-        double RotStd = (Constants.sDrivetrain.RotBase + estimate.avgTagDist * Constants.sDrivetrain.RotScale) * MultiTagBonus;
-
-        XYStd = Math.min(Constants.sDrivetrain.XYMax, Math.max(Constants.sDrivetrain.XYMin, XYStd));
-        RotStd = Math.min(Constants.sDrivetrain.RotMax, Math.max(Constants.sDrivetrain.RotMin, RotStd));
-
-        return VecBuilder.fill(XYStd, XYStd, RotStd);
-    }
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
         new SysIdRoutine.Config(
@@ -387,54 +345,5 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     @Override
     public Optional<Pose2d> samplePoseAt(double timestampSeconds) {
         return super.samplePoseAt(Utils.fpgaToCurrentTime(timestampSeconds));
-    }
-
-    public boolean RejectUpdate(PoseEstimate poseEstimator, double rotationSpeed){
-        if (Math.abs(rotationSpeed) > Constants.AprilTagLimelight1Constants.MaxEstimateSpeed){
-            return true;
-        }
-
-        if (poseEstimator.tagCount == 0){
-            return true;
-        } else {
-            for (RawFiducial tag : poseEstimator.rawFiducials){
-                if (tag.ambiguity > Constants.AprilTagLimelight1Constants.MaxAmbiguity){
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public Matrix<N3, N1> CalculateStdDevs(PoseEstimate poseEstimate){
-        if (poseEstimate.tagCount == 0){
-            return VecBuilder.fill(999999, 999999, 999999);
-        }
-
-        double distanceToTags = poseEstimate.avgTagDist;
-
-        double xyBase = Constants.AprilTagLimelight1Constants.BaseXYStdDev;
-        double rotBase = Constants.AprilTagLimelight1Constants.BaseRotStdDev;
-
-        double xyScale = Constants.AprilTagLimelight1Constants.XYScaleFactor;
-        double rotScale = Constants.AprilTagLimelight1Constants.RotScaleFactor;
-
-        double multiTagBonus;
-
-        if (poseEstimate.tagCount > 1){
-            multiTagBonus = Constants.AprilTagLimelight1Constants.MultiTag2Plus;
-        } else if (poseEstimate.tagCount == 1){
-            multiTagBonus = Constants.AprilTagLimelight1Constants.MultiTag1;
-        } else {
-            multiTagBonus = 1.0;
-        }
-
-        double XYStdDev = (xyBase + (distanceToTags * xyScale)) * multiTagBonus;
-        double RotStdDev = (rotBase + (distanceToTags * rotScale)) * multiTagBonus;
-
-        XYStdDev = Math.max(Math.min(XYStdDev, Constants.AprilTagLimelight1Constants.XYStdMin), Constants.AprilTagLimelight1Constants.XYStdMax);
-        RotStdDev = Math.max(Math.min(RotStdDev, Constants.AprilTagLimelight1Constants.RotStdMin), Constants.AprilTagLimelight1Constants.RotStdMax);
-
-        return(VecBuilder.fill(XYStdDev, XYStdDev, RotStdDev));
     }
 }

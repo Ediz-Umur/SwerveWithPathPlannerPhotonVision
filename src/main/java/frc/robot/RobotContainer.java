@@ -20,12 +20,12 @@ import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.commands.AutoAlign;
-import frc.robot.commands.MoveAndAlign;
-import frc.robot.commands.ShooterCalculate;
+//import frc.robot.commands.MoveAndAlign;
+//import frc.robot.commands.ShooterCalculate;
 import frc.robot.commands.WheelStabilize;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.Shooter;
+//import frc.robot.subsystems.Shooter;
 
 
 public class RobotContainer {
@@ -42,7 +42,7 @@ public class RobotContainer {
 
     public static final CommandPS5Controller joystick = new CommandPS5Controller(0);
     public final static Intake intake = new Intake();
-    public final static Shooter shooter = new Shooter();
+    //public final static Shooter shooter = new Shooter();
 
 
     public RobotContainer() {
@@ -84,10 +84,10 @@ public class RobotContainer {
         joystick.R1().onTrue(new InstantCommand(()-> intake.StopIntake()));
 
         joystick.square().onTrue(new AutoAlign());
-        joystick.triangle().onTrue(new ShooterCalculate());
-        joystick.cross().toggleOnTrue(new MoveAndAlign());
+        //joystick.triangle().onTrue(new ShooterCalculate());
+        //joystick.cross().toggleOnTrue(new MoveAndAlign());
         joystick.circle().toggleOnTrue(new InstantCommand(() -> Constants.drivetrain.setControl(new SwerveRequest.SwerveDriveBrake())).repeatedly());
-        joystick.L2().onTrue(new ShooterCalculate());
+        //joystick.L2().onTrue(new ShooterCalculate());
         
         Constants.drivetrain.registerTelemetry(logger::telemeterize);
     }

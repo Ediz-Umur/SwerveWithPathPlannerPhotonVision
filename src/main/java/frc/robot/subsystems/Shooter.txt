@@ -10,6 +10,10 @@ import java.util.Optional;
 
 import javax.annotation.processing.SupportedOptions;
 
+import org.photonvision.PhotonCamera;
+import org.photonvision.targeting.PhotonPipelineResult;
+import org.photonvision.targeting.PhotonTrackedTarget;
+
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
@@ -25,7 +29,10 @@ import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
+import frc.robot.Robot;
 import frc.robot.LimelightHelpers;
+import frc.robot.Robot;
+import frc.robot.Constants.AprilTagCameraKargaConstants;
 import frc.robot.Constants.AprilTagLimelight1Constants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.LimelightHelpers.LimelightResults;
@@ -45,6 +52,7 @@ public class Shooter extends SubsystemBase {
         private static Collection<Object> lBoth = new HashSet<Object>();
     }
 
+    PhotonCamera CameraKarga = new PhotonCamera(AprilTagCameraKargaConstants.cameraName);
     public TalonFX shooterMotor;
     public TalonFX angleMotor;
     public TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
@@ -62,10 +70,7 @@ public class Shooter extends SubsystemBase {
     private double hubHeight = 1.829;
 
     private double xOffset = 0.0;
-    private double xAngle;
-
-    private String name = Constants.AprilTagLimelight1Constants.limelightName;
-    
+    private double xAngle;    
 
     public Shooter(){
         shooterMotor = new TalonFX(ShooterConstants.ShooterMotorID);
@@ -127,24 +132,26 @@ public class Shooter extends SubsystemBase {
     }
 
     public void AlignLimelight(){
-        double ID = LimelightHelpers.getFiducialID("");
-        double XOffset = 0;
-        if (ID == 21
-         || ID == 26
-         || ID == 20
-         || ID == 18){
-            XOffset = 0;
-        } else 
-        if (ID == 25
-         || ID == 27
-         || ID == 19
-         || ID == 24){
-            XOffset = 0.35;
-            if (ID == 24){
-                XOffset *= -1;
-            }
-         }
-         LimelightHelpers.setFiducial3DOffset("", -0.5965, xOffset, -0.66);
+        PhotonPipelineResult result = CameraKarga.getLatestResult();
+        if (result.hasTargets()){
+            double ID = CameraKarga.getLatestResult().get
+            double XOffset = 0;
+            if (ID == 21
+             || ID == 26
+             || ID == 20
+             || ID == 18){
+                XOffset = 0;
+            } else 
+            if (ID == 25
+             || ID == 27
+             || ID == 19
+             || ID == 24){
+                XOffset = 0.35;
+                if (ID == 24){
+                    XOffset *= -1;
+                }
+             }
+             LimelightHelpers.setFiducial3DOffset("", -0.5965, xOffset, -0.66);
     }
 
     public double calculateDistance(){

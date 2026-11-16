@@ -1,10 +1,20 @@
 package frc.robot;
 
+import org.photonvision.PhotonCamera;
+
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.Shooter;
+//import frc.robot.subsystems.Shooter;
 
 public class Constants{
 
@@ -12,7 +22,7 @@ public class Constants{
     public static boolean AutoBuilderConfigured = false;
     public static boolean MoveAndAlignEnabled = false;
     public static boolean xLock = false;
-    public static final Shooter shooter = new Shooter();
+    //public static final Shooter shooter = new Shooter();
 
     public static final double MinAmbiguity = 0.19;
 
@@ -71,26 +81,28 @@ public class Constants{
         public final static double angleStatorCurrentLimit = 100000; //TODO
     }
 
-    public class AprilTagLimelight1Constants{
-        public final static double limelightHeight = 0.203; //TODO
-        public final static double limelightAngle = 30; //TODO
-        public final static String limelightName = "limelight-shooter"; //TODO
+    public class VisionCameraKargaConstants{
+        public final static String Name = "Mavi";
+        public static final Transform3d RobotToCamera = new Transform3d(new Translation3d(0.355,0,0.132), new Rotation3d(-Units.degreesToRadians(30),0,0));
+    }
 
-        public static final double MaxEstimateSpeed = 180.0; //TODO
-        public static final double MaxAmbiguity = 0.19; //TODO
+    public class VisionCameraTavukConstants{
+        public final static String Name = "Yesil";
+        public static final Transform3d RobotToCamera = new Transform3d(new Translation3d(0, -0.355, 0.132), new Rotation3d(0,Units.degreesToRadians(30),Units.degreesToRadians(90)));
+    }
 
-        public static final double BaseXYStdDev = 0.3; //TODO
-        public static final double BaseRotStdDev = 1.0; //TODO
+    public class VisionCameraSiyahConstants{
+        public final static String Name = "Siyah";
+        public static final Transform3d RobotToCamera = new Transform3d(new Translation3d(0,0.355,0.132), new Rotation3d(Units.degreesToRadians(30),0,-Units.degreesToRadians(90)));
+    }
+    
+    public class VisionStdConstants{
+        public final static Matrix<N3, N1> stdSingleTag = VecBuilder.fill(1.1, 1.1, 1.5);
+        public final static Matrix<N3, N1> stdMultitag = VecBuilder.fill(0.7, 0.7, 0.9);
 
-        public static final double XYScaleFactor = 0.1; //TODO
-        public static final double RotScaleFactor = 0.2; //TODO
+        public final static double AvgMaxDistance = 4; //How far the avgDist has to be for a 1 tag pose before the pose is trashed
+        public final static double StdPenalty = 30; //How much the Std dev is increased for 1 tag poses (LOWER MEANS MORE PENALTY)
 
-        public static final double MultiTag2Plus = 0.5; //TODO
-        public static final double MultiTag1 = 0.7; //TODO
-
-        public static final double XYStdMin = 0.5; //TODO
-        public static final double XYStdMax = 5.0; //TODO
-        public static final double RotStdMin = 2.0; //TODO
-        public static final double RotStdMax = 10.0; //TODO
+        public final static double MaxAmbiguity = 0.2; //THe maximum ambiguity in a target before the pose estimate is trashed
     }
 }
